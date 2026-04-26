@@ -5,11 +5,21 @@
   align-items: center;
   justify-content: center;
   overflow: auto;
+  touch-action: none;
 }
 
 .canvas-stack {
   position: relative;
-  background: white;
+  /* Checkerboard background for transparency */
+  background-image: 
+    linear-gradient(45deg, #eee 25%, transparent 25%),
+    linear-gradient(-45deg, #eee 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, #eee 75%),
+    linear-gradient(-45deg, transparent 75%, #eee 75%);
+  background-size: 20px 20px;
+  background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
+  background-color: white; /* Base color */
+  
   box-shadow: 0 30px 100px rgba(0, 0, 0, 0.8);
   width: 1000px;
   /* Viewport width */
@@ -17,6 +27,7 @@
   /* Viewport height */
   flex-shrink: 0;
   cursor: crosshair;
+  overflow: visible !important;
 }
 
 .layer-canvas {
@@ -25,16 +36,17 @@
   left: 0;
   width: 100%;
   height: 100%;
+  transform-origin: 0 0;
   image-rendering: pixelated;
   pointer-events: none;
   /* Allow events to pass to the stack container */
 }
 
-.layer-canvas.visible {
+.layer-wrapper.visible {
   display: block;
 }
 
-.layer-canvas.hidden {
+.layer-wrapper.hidden {
   display: none;
 }
 
