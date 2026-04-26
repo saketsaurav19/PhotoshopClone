@@ -118,7 +118,7 @@ const Canvas: React.FC = () => {
     grad.addColorStop(1, secondaryColor);
 
     ctx.fillStyle = grad;
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
     recordHistory('Gradient');
   }, [activeLayerId, layers, brushColor, secondaryColor, recordHistory]);
 
@@ -480,7 +480,7 @@ const Canvas: React.FC = () => {
         } else if (layer.type === 'shape' && layer.shapeData) {
           const localX = coords.x - layer.position.x;
           const localY = coords.y - layer.position.y;
-          if (localX >= 0 && localX <= layer.shapeData.w && localY >= 0 && localY <= layer.shapeData.h) {
+          if (localX >= 0 && localX <= (layer.shapeData.w || 0) && localY >= 0 && localY <= (layer.shapeData.h || 0)) {
             setActiveLayer(layer.id);
             break;
           }
@@ -626,7 +626,9 @@ const Canvas: React.FC = () => {
         ctx.beginPath();
         ctx.arc(lx, ly, brushSize / 2, 0, Math.PI * 2);
         ctx.clip();
-        ctx.drawImage(canvas, sx - brushSize / 2, sy - brushSize / 2, brushSize, brushSize, lx - brushSize / 2, ly - brushSize / 2, brushSize, brushSize);
+        if (canvas) {
+          ctx.drawImage(canvas, sx - brushSize / 2, sy - brushSize / 2, brushSize, brushSize, lx - brushSize / 2, ly - brushSize / 2, brushSize, brushSize);
+        }
         ctx.restore();
       }
     }
