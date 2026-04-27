@@ -101,8 +101,20 @@ const ColorPicker: React.FC<ColorPickerProps> = ({
   const popoverRef = useRef<HTMLDivElement>(null);
   const svRef = useRef<HTMLDivElement>(null);
 
+  const [internalHue, setInternalHue] = useState(0);
+
   const { r, g, b } = hexToRgb(color);
-  const { h, s, v } = rgbToHsv(r, g, b);
+  const { h: derivedH, s, v } = rgbToHsv(r, g, b);
+  
+  // Sync internal hue with prop-derived hue ONLY if the color has saturation
+  // This prevents the hue from snapping to 0 when clicking grayscale areas
+  useEffect(() => {
+    if (s > 0) {
+      setInternalHue(derivedH);
+    }
+  }, [derivedH, s]);
+
+  const h = internalHue;
   const hsl = rgbToHsl(r, g, b);
   const rgbaString = `rgba(${r}, ${g}, ${b}, ${opacity.toFixed(2)})`;
 
@@ -123,9 +135,9 @@ const ColorPicker: React.FC<ColorPickerProps> = ({
     const rect = svRef.current.getBoundingClientRect();
     const ns = Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width));
     const nv = Math.min(1, Math.max(0, 1 - (e.clientY - rect.top) / rect.height));
-    const { r: nr, g: ng, b: nb } = hsvToRgb(h, ns, nv);
+    const { r: nr, g: ng, b: nb } = hsvToRgb(internalHue, ns, nv);
     onColorChange(`#${nr.toString(16).padStart(2, '0')}${ng.toString(16).padStart(2, '0')}${nb.toString(16).padStart(2, '0')}`);
-  }, [h, onColorChange]);
+  }, [internalHue, onColorChange]);
 
   const onSvMouseDown = (e: React.MouseEvent) => {
     handleSvChange(e);
@@ -234,6 +246,7 @@ const ColorPicker: React.FC<ColorPickerProps> = ({
           onSvMouseDown={onSvMouseDown}
           svRef={svRef}
           handleTextChange={handleTextChange}
+          setInternalHue={setInternalHue}
         />
       )}
     </div>
@@ -244,7 +257,8 @@ const ColorPickerPopover = React.forwardRef<HTMLDivElement, any>((props, ref) =>
   const {
     style, h, s, v, r, g, b, color, opacity,
     onColorChange, onOpacityChange, rgbaString, hsl,
-    viewMode, cycleViewMode, onSvMouseDown, svRef, onClose
+    viewMode, cycleViewMode, onSvMouseDown, svRef, onClose,
+    setInternalHue
   } = props;
 
   const [pos, setPos] = useState({ x: 0, y: 0 });
@@ -312,18 +326,68 @@ const ColorPickerPopover = React.forwardRef<HTMLDivElement, any>((props, ref) =>
 
       <div className="picker-controls" onMouseDown={e => e.stopPropagation()}>
         <div style={{ display: 'flex', gap: '12px', marginTop: '12px' }}>
-          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            <input type="range" min="0" max="1" step="0.001" value={h}
-              onChange={(e) => {
-                const { r: nr, g: ng, b: nb } = hsvToRgb(parseFloat(e.target.value), s, v);
-                onColorChange(`#${nr.toString(16).padStart(2, '0')}${ng.toString(16).padStart(2, '0')}${nb.toString(16).padStart(2, '0')}`);
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            {/* Custom Hue Slider */}
+            <div 
+              style={{ 
+                position: 'relative', width: '100%', height: '12px', borderRadius: '6px', cursor: 'pointer',
+                background: 'linear-gradient(to right, #f00 0%, #ff0 17%, #0f0 33%, #0ff 50%, #00f 67%, #f0f 83%, #f00 100%)',
+                boxShadow: 'inset 0 1px 3px rgba(0,0,0,0.3)'
               }}
-              style={{ width: '100%', height: '10px', borderRadius: '5px', cursor: 'pointer', appearance: 'none', background: 'linear-gradient(to right, #f00 0%, #ff0 17%, #0f0 33%, #0ff 50%, #00f 67%, #f0f 83%, #f00 100%)' }} />
-            <div style={{ position: 'relative', height: '10px', borderRadius: '5px' }}>
-              <div style={{ position: 'absolute', inset: 0, borderRadius: '5px', backgroundImage: 'linear-gradient(45deg, #444 25%, transparent 25%), linear-gradient(-45deg, #444 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #444 75%), linear-gradient(-45deg, transparent 75%, #444 75%)', backgroundSize: '6px 6px', opacity: 0.5 }} />
-              <div style={{ position: 'absolute', inset: 0, borderRadius: '5px', background: `linear-gradient(to right, transparent, ${color})` }} />
-              <input type="range" min="0" max="1" step="0.01" value={opacity} onChange={(e) => onOpacityChange(parseFloat(e.target.value))}
-                style={{ position: 'absolute', width: '100%', height: '10px', zIndex: 1 }} />
+              onMouseDown={(e) => {
+                const rect = e.currentTarget.getBoundingClientRect();
+                const update = (ex: number) => {
+                  const val = Math.min(1, Math.max(0, (ex - rect.left) / rect.width));
+                  setInternalHue(val);
+                  const { r: nr, g: ng, b: nb } = hsvToRgb(val, s, v);
+                  onColorChange(`#${nr.toString(16).padStart(2, '0')}${ng.toString(16).padStart(2, '0')}${nb.toString(16).padStart(2, '0')}`);
+                };
+                update(e.clientX);
+                const onMove = (me: MouseEvent) => update(me.clientX);
+                const onUp = () => {
+                  document.removeEventListener('mousemove', onMove);
+                  document.removeEventListener('mouseup', onUp);
+                };
+                document.addEventListener('mousemove', onMove);
+                document.addEventListener('mouseup', onUp);
+              }}
+            >
+              <div style={{ 
+                position: 'absolute', left: `${h * 100}%`, top: '50%', transform: 'translate(-50%, -50%)',
+                width: '14px', height: '14px', background: '#fff', border: '2px solid #2d2d2d', borderRadius: '50%',
+                boxShadow: '0 2px 4px rgba(0,0,0,0.3)', pointerEvents: 'none'
+              }} />
+            </div>
+
+            {/* Custom Opacity Slider */}
+            <div 
+              style={{ 
+                position: 'relative', width: '100%', height: '12px', borderRadius: '6px', cursor: 'pointer',
+                boxShadow: 'inset 0 1px 3px rgba(0,0,0,0.3)', overflow: 'hidden'
+              }}
+              onMouseDown={(e) => {
+                const rect = e.currentTarget.getBoundingClientRect();
+                const update = (ex: number) => {
+                  const val = Math.min(1, Math.max(0, (ex - rect.left) / rect.width));
+                  onOpacityChange(val);
+                };
+                update(e.clientX);
+                const onMove = (me: MouseEvent) => update(me.clientX);
+                const onUp = () => {
+                  document.removeEventListener('mousemove', onMove);
+                  document.removeEventListener('mouseup', onUp);
+                };
+                document.addEventListener('mousemove', onMove);
+                document.addEventListener('mouseup', onUp);
+              }}
+            >
+              <div style={{ position: 'absolute', inset: 0, backgroundImage: 'linear-gradient(45deg, #444 25%, transparent 25%), linear-gradient(-45deg, #444 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #444 75%), linear-gradient(-45deg, transparent 75%, #444 75%)', backgroundSize: '6px 6px', opacity: 0.5 }} />
+              <div style={{ position: 'absolute', inset: 0, background: `linear-gradient(to right, transparent, ${color})` }} />
+              <div style={{ 
+                position: 'absolute', left: `${opacity * 100}%`, top: '50%', transform: 'translate(-50%, -50%)',
+                width: '14px', height: '14px', background: '#fff', border: '2px solid #2d2d2d', borderRadius: '50%',
+                boxShadow: '0 2px 4px rgba(0,0,0,0.3)', pointerEvents: 'none', zIndex: 2
+              }} />
             </div>
           </div>
           <div style={{ width: '32px', height: '32px', borderRadius: '50%', position: 'relative', overflow: 'hidden', border: '2px solid #444' }}>

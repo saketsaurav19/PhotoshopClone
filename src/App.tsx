@@ -36,7 +36,8 @@ const App: React.FC = () => {
     moveLayer,
     reorderLayers,
     documentSize,
-    activeTool
+    activeTool,
+    setIsTyping
   } = useStore();
 
   const handleSave = (asNew: boolean = false) => {
@@ -79,11 +80,13 @@ const App: React.FC = () => {
   const [fillColor, setFillColor] = React.useState('#ffffff');
   const [fillOpacity, setFillOpacity] = React.useState(1);
   const [draggedIndex, setDraggedIndex] = React.useState<number | null>(null);
+  const [isEditingOpacity, setIsEditingOpacity] = React.useState(false);
+  const [tempOpacityValue, setTempOpacityValue] = React.useState('');
 
   React.useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Don't trigger shortcuts if user is typing in an input or textarea
-      if (document.activeElement?.tagName === 'INPUT' || document.activeElement?.tagName === 'TEXTAREA') {
+      // Don't trigger shortcuts if user is typing in an input or textarea or custom text editor
+      if (document.activeElement?.tagName === 'INPUT' || document.activeElement?.tagName === 'TEXTAREA' || useStore.getState().isTyping) {
         return;
       }
 
@@ -119,16 +122,17 @@ const App: React.FC = () => {
           'w': { id: 'selection', tools: ['quick_selection', 'magic_wand', 'object_selection'] },
           'c': { id: 'crop', tools: ['crop', 'perspective_crop', 'slice', 'slice_select'] },
           'i': { id: 'eyedropper', tools: ['eyedropper', 'color_sampler', 'ruler'] },
-          'j': { id: 'healing', tools: ['healing', 'healing_brush', 'patch'] },
-          'b': { id: 'brush', tools: ['brush', 'pencil', 'color_replacement'] },
+          'j': { id: 'healing', tools: ['healing', 'healing_brush', 'patch', 'content_aware_move', 'red_eye'] },
+          'b': { id: 'brush', tools: ['brush', 'pencil', 'color_replacement', 'mixer_brush'] },
+          'y': { id: 'history', tools: ['history_brush', 'art_history_brush'] },
           's': { id: 'clone', tools: ['clone', 'pattern_stamp'] },
-          'e': { id: 'eraser', tools: ['eraser', 'background_eraser'] },
+          'e': { id: 'eraser', tools: ['eraser', 'background_eraser', 'magic_eraser'] },
           'g': { id: 'gradient', tools: ['gradient', 'paint_bucket'] },
           'o': { id: 'dodge', tools: ['dodge', 'burn', 'sponge'] },
           't': { id: 'text', tools: ['text', 'vertical_text'] },
-          'p': { id: 'pen', tools: ['pen', 'free_pen', 'add_anchor', 'delete_anchor'] },
+          'p': { id: 'pen', tools: ['pen', 'free_pen', 'curvature_pen', 'add_anchor', 'delete_anchor', 'convert_point'] },
           'a': { id: 'path', tools: ['path_select', 'direct_select'] },
-          'u': { id: 'shape', tools: ['shape', 'ellipse_shape', 'line_shape'] },
+          'u': { id: 'shape', tools: ['shape', 'ellipse_shape', 'triangle_shape', 'polygon_shape', 'line_shape', 'custom_shape'] },
           'h': { id: 'hand', tools: ['hand', 'rotate_view'] },
           'z': { id: 'zoom', tools: ['zoom_tool'] }
         };
@@ -146,6 +150,28 @@ const App: React.FC = () => {
           }
 
           setToolVariant(group.id, nextTool as any);
+        }
+      }
+
+      // Layer Selection (Alt + [ and Alt + ])
+      if (e.altKey && !isCtrl) {
+        if (e.key === '[' || e.key === ']') {
+          e.preventDefault();
+          const { layers, activeLayerId, setActiveLayer } = useStore.getState();
+          if (layers.length <= 1) return;
+
+          const currentIndex = layers.findIndex(l => l.id === activeLayerId);
+          let nextIndex = 0;
+
+          if (e.key === '[') {
+            // Select backward (visually down the list)
+            nextIndex = (currentIndex + 1) % layers.length;
+          } else if (e.key === ']') {
+            // Select forward (visually up the list)
+            nextIndex = (currentIndex - 1 + layers.length) % layers.length;
+          }
+
+          setActiveLayer(layers[nextIndex].id);
         }
       }
 
@@ -203,28 +229,71 @@ const App: React.FC = () => {
     activeTool
   ]);
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  const handleFile = (file: File | Blob, name?: string) => {
+    if (!file.type.startsWith('image/')) return;
 
     const reader = new FileReader();
     reader.onload = (event) => {
       const dataUrl = event.target?.result as string;
       const img = new Image();
       img.onload = () => {
-        // Auto-size document to match image
-        setDocumentSize({ w: img.width, h: img.height });
+        const isDefaultBackground = layers.length === 1 && layers[0].name === 'Background' && layers[0].type === 'paint';
+        if (layers.length === 0 || isDefaultBackground) {
+          setDocumentSize({ w: img.width, h: img.height });
+        }
         addLayer({
-          name: file.name,
+          name: name || (file as File).name || 'Pasted Image',
           type: 'image',
           dataUrl,
+          position: (layers.length === 0 || isDefaultBackground) ? { x: 0, y: 0 } : { x: (documentSize.w - img.width) / 2, y: (documentSize.h - img.height) / 2 }
         });
-        recordHistory(`Upload ${file.name}`);
+        recordHistory(`Import ${name || 'Image'}`);
       };
       img.src = dataUrl;
     };
     reader.readAsDataURL(file);
   };
+
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) handleFile(file);
+  };
+
+  React.useEffect(() => {
+    const handlePaste = (e: ClipboardEvent) => {
+      const items = e.clipboardData?.items;
+      if (!items) return;
+      for (let i = 0; i < items.length; i++) {
+        if (items[i].type.indexOf('image') !== -1) {
+          const blob = items[i].getAsFile();
+          if (blob) handleFile(blob, 'Pasted Image');
+        }
+      }
+    };
+
+    const handleDrop = (e: DragEvent) => {
+      e.preventDefault();
+      const files = e.dataTransfer?.files;
+      if (files && files.length > 0) {
+        for (let i = 0; i < files.length; i++) {
+          handleFile(files[i]);
+        }
+      }
+    };
+
+    const handleDragOver = (e: DragEvent) => {
+      e.preventDefault();
+    };
+
+    window.addEventListener('paste', handlePaste);
+    window.addEventListener('drop', handleDrop);
+    window.addEventListener('dragover', handleDragOver);
+    return () => {
+      window.removeEventListener('paste', handlePaste);
+      window.removeEventListener('drop', handleDrop);
+      window.removeEventListener('dragover', handleDragOver);
+    };
+  }, [layers, documentSize, addLayer, recordHistory, setDocumentSize]);
 
   const handleInvert = () => {
     if (!activeLayerId) return;
@@ -617,6 +686,77 @@ const App: React.FC = () => {
 
           <div className="side-panel layers-panel">
             <div className="panel-tab">Layers</div>
+            
+            {/* Global Layer Properties - Only visible if a layer is active */}
+            {activeLayerId && (() => {
+              const activeLayer = layers.find(l => l.id === activeLayerId);
+              if (!activeLayer) return null;
+              return (
+                <div className="layer-global-properties">
+                  <select 
+                    className="blend-select" 
+                    value={activeLayer.blendMode || 'source-over'} 
+                    onChange={(e) => updateLayer(activeLayerId, { blendMode: e.target.value as any })}
+                  >
+                    <option value="source-over">Normal</option>
+                    <option value="multiply">Multiply</option>
+                    <option value="screen">Screen</option>
+                    <option value="overlay">Overlay</option>
+                  </select>
+                  <div className="opacity-control">
+                    <span>Op:</span>
+                    <input 
+                      type="range" 
+                      min="0" max="1" step="0.01"
+                      value={activeLayer.opacity || 1}
+                      onChange={(e) => updateLayer(activeLayerId, { opacity: parseFloat(e.target.value) })}
+                    />
+                    {isEditingOpacity ? (
+                      <input 
+                        type="text"
+                        className="opacity-input"
+                        autoFocus
+                        value={tempOpacityValue}
+                        onChange={(e) => setTempOpacityValue(e.target.value)}
+                        onFocus={(e) => {
+                          e.target.select();
+                          setIsTyping(true);
+                        }}
+                        onBlur={() => {
+                          setIsEditingOpacity(false);
+                          setIsTyping(false);
+                          const val = parseInt(tempOpacityValue);
+                          if (!isNaN(val)) {
+                            updateLayer(activeLayerId, { opacity: Math.max(0, Math.min(1, val / 100)) });
+                          }
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.currentTarget.blur();
+                          }
+                          if (e.key === 'Escape') {
+                            setIsEditingOpacity(false);
+                            setIsTyping(false);
+                          }
+                        }}
+                      />
+                    ) : (
+                      <span 
+                        className="opacity-val" 
+                        onDoubleClick={() => {
+                          setTempOpacityValue(Math.round((activeLayer.opacity || 1) * 100).toString());
+                          setIsEditingOpacity(true);
+                        }}
+                        title="Double-click to type exact value"
+                      >
+                        {Math.round((activeLayer.opacity || 1) * 100)}%
+                      </span>
+                    )}
+                  </div>
+                </div>
+              );
+            })()}
+
             <div className="panel-content">
               {layers.map((layer, idx) => (
                 <div
@@ -647,17 +787,6 @@ const App: React.FC = () => {
                       <button onClick={(e) => { e.stopPropagation(); moveLayer(layer.id, 'down'); recordHistory('Move Layer Down'); }} title="Move Down"><LucideIcons.ChevronDown size={12} /></button>
                     </div>
                   </div>
-                  {activeLayerId === layer.id && (
-                    <div className="layer-settings">
-                      <select className="blend-select" value={layer.blendMode || 'source-over'} onChange={(e) => updateLayer(layer.id, { blendMode: e.target.value as any })}>
-                        <option value="source-over">Normal</option>
-                        <option value="multiply">Multiply</option>
-                        <option value="screen">Screen</option>
-                        <option value="overlay">Overlay</option>
-                      </select>
-                      <div className="opacity-val">{Math.round(layer.opacity * 100)}%</div>
-                    </div>
-                  )}
                 </div>
               ))}
             </div>

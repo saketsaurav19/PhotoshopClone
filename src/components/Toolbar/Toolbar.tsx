@@ -77,6 +77,8 @@ const TOOL_GROUPS: ToolGroup[] = [
       { id: 'healing', icon: LucideIcons.Bandage, label: 'Spot Healing Brush', shortcut: 'J' },
       { id: 'healing_brush', icon: LucideIcons.Sticker, label: 'Healing Brush', shortcut: 'J' },
       { id: 'patch', icon: LucideIcons.Wand2, label: 'Patch Tool', shortcut: 'J' },
+      { id: 'content_aware_move', icon: LucideIcons.Move, label: 'Content-Aware Move', shortcut: 'J' },
+      { id: 'red_eye', icon: LucideIcons.Eye, label: 'Red Eye Tool', shortcut: 'J' },
     ],
   },
   {
@@ -85,6 +87,14 @@ const TOOL_GROUPS: ToolGroup[] = [
       { id: 'brush', icon: LucideIcons.Brush, label: 'Brush Tool', shortcut: 'B' },
       { id: 'pencil', icon: LucideIcons.Pencil, label: 'Pencil Tool', shortcut: 'B' },
       { id: 'color_replacement', icon: LucideIcons.Paintbrush, label: 'Color Replacement', shortcut: 'B' },
+      { id: 'mixer_brush', icon: LucideIcons.Wind, label: 'Mixer Brush', shortcut: 'B' },
+    ],
+  },
+  {
+    id: 'history',
+    tools: [
+      { id: 'history_brush', icon: LucideIcons.History, label: 'History Brush', shortcut: 'Y' },
+      { id: 'art_history_brush', icon: LucideIcons.Palette, label: 'Art History Brush', shortcut: 'Y' },
     ],
   },
   {
@@ -99,6 +109,9 @@ const TOOL_GROUPS: ToolGroup[] = [
     tools: [
       { id: 'eraser', icon: LucideIcons.Eraser, label: 'Eraser Tool', shortcut: 'E' },
       { id: 'background_eraser', icon: LucideIcons.Trash, label: 'Background Eraser', shortcut: 'E' },
+      { id: 'magic_eraser', icon: LucideIcons.Sparkles, label: 'Magic Eraser', shortcut: 'E' },
+      { id: 'rectangle_eraser', icon: LucideIcons.BoxSelect, label: 'Rectangle Eraser', shortcut: 'E' },
+      { id: 'lasso_eraser', icon: LucideIcons.Spline, label: 'Lasso Eraser', shortcut: 'E' },
     ],
   },
   {
@@ -136,15 +149,17 @@ const TOOL_GROUPS: ToolGroup[] = [
     tools: [
       { id: 'pen', icon: LucideIcons.PenTool, label: 'Pen', shortcut: 'P' },
       { id: 'free_pen', icon: LucideIcons.Edit3, label: 'Free Pen', shortcut: 'P' },
+      { id: 'curvature_pen', icon: LucideIcons.Spline, label: 'Curvature Pen', shortcut: 'P' },
       { id: 'add_anchor', icon: LucideIcons.Plus, label: 'Add Anchor Point', shortcut: 'P' },
       { id: 'delete_anchor', icon: LucideIcons.Minus, label: 'Delete Anchor Point', shortcut: 'P' },
+      { id: 'convert_point', icon: LucideIcons.RefreshCw, label: 'Convert Point', shortcut: 'P' },
     ],
   },
   {
     id: 'path',
     tools: [
-      { id: 'path_select', icon: LucideIcons.MousePointer2, label: 'Path Select', shortcut: 'A' },
-      { id: 'direct_select', icon: LucideIcons.MousePointer, label: 'Direct Select', shortcut: 'A' },
+      { id: 'path_select', icon: LucideIcons.MousePointer2, label: 'Path Selection', shortcut: 'A' },
+      { id: 'direct_select', icon: LucideIcons.MousePointer, label: 'Direct Selection (Move Anchor)', shortcut: 'A' },
     ],
   },
   {
@@ -152,7 +167,10 @@ const TOOL_GROUPS: ToolGroup[] = [
     tools: [
       { id: 'shape', icon: LucideIcons.Square, label: 'Rectangle', shortcut: 'U' },
       { id: 'ellipse_shape', icon: LucideIcons.Circle, label: 'Ellipse', shortcut: 'U' },
+      { id: 'triangle_shape', icon: LucideIcons.Triangle, label: 'Triangle', shortcut: 'U' },
+      { id: 'polygon_shape', icon: LucideIcons.Hexagon, label: 'Polygon', shortcut: 'U' },
       { id: 'line_shape', icon: LucideIcons.Minus, label: 'Line', shortcut: 'U' },
+      { id: 'custom_shape', icon: LucideIcons.Star, label: 'Star Shape', shortcut: 'U' },
     ],
   },
   {

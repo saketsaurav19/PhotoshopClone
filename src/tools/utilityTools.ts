@@ -91,5 +91,39 @@ export const utilityTools: ToolModule[] = [
     end: ({ setIsInteracting }) => {
       setIsInteracting(false);
     }
+  },
+  {
+    id: 'gradient',
+    start: ({ coords, setIsInteracting }) => {
+      setIsInteracting(true);
+      window.dispatchEvent(new CustomEvent('set-gradient-start', { detail: coords }));
+    },
+    move: ({ coords }) => {
+      window.dispatchEvent(new CustomEvent('set-gradient-end', { detail: coords }));
+    },
+    end: ({ coords, ctx, canvas, activeLayerId, updateLayer, recordHistory, setIsInteracting, brushColor, secondaryColor, primaryOpacity, secondaryOpacity, hexToRgba, applySelectionClip }) => {
+      setIsInteracting(false);
+      const start = (window as any)._gradientStart;
+      if (!start || !ctx || !canvas || !activeLayerId) {
+        window.dispatchEvent(new CustomEvent('clear-gradient'));
+        return;
+      }
+
+      ctx.save();
+      // Apply selection mask if any
+      applySelectionClip(ctx, 0, 0, canvas.width, canvas.height);
+      
+      const grad = ctx.createLinearGradient(start.x, start.y, coords.x, coords.y);
+      grad.addColorStop(0, hexToRgba(brushColor, primaryOpacity));
+      grad.addColorStop(1, hexToRgba(secondaryColor, secondaryOpacity));
+      
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.restore();
+
+      updateLayer(activeLayerId, { dataUrl: canvas.toDataURL() });
+      recordHistory('Gradient');
+      window.dispatchEvent(new CustomEvent('clear-gradient'));
+    }
   }
 ];

@@ -22,6 +22,8 @@ export interface ToolContext {
   slices: { id: string; rect: { x: number; y: number; w: number; h: number } }[];
   colorSamplers: { id: string; x: number; y: number; color: string }[];
   rulerData: { start: { x: number; y: number }; end: { x: number; y: number } } | null;
+  toolStrength: number;
+  toolHardness: number;
   
   // State Updaters
   setLassoPaths: (paths: any) => void;
@@ -38,6 +40,20 @@ export interface ToolContext {
   addColorSampler: (coords: { x: number; y: number }, color: string) => void;
   clearColorSamplers: () => void;
   setRulerData: (data: any) => void;
+  history: any[];
+  historyIndex: number;
+  cloneSource: { x: number; y: number } | null;
+  setCloneSource: (source: { x: number; y: number } | null) => void;
+  customPattern: string | null;
+  secondaryColor: string;
+  primaryOpacity: number;
+  secondaryOpacity: number;
+  hexToRgba: (hex: string, opacity: number) => string;
+  applySelectionClip: (ctx: CanvasRenderingContext2D, offsetX: number, offsetY: number, canvasWidth: number, canvasHeight: number) => boolean;
+  setIsTyping: (val: boolean) => void;
+  redEyePupilSize: number;
+  redEyeDarkenAmount: number;
+  isInteracting: boolean;
 }
 
 export interface ToolModule {

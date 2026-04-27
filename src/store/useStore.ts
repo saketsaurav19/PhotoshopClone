@@ -8,7 +8,7 @@ export const hexToRgba = (hex: string, opacity: number) => {
   return `rgba(${r}, ${g}, ${b}, ${opacity})`;
 };
 
-export type Tool = 
+export type Tool =
   | 'move' | 'artboard'
   | 'marquee' | 'ellipse_marquee'
   | 'lasso' | 'polygonal_lasso' | 'magnetic_lasso'
@@ -16,16 +16,17 @@ export type Tool =
   | 'crop' | 'perspective_crop' | 'slice' | 'slice_select'
   | 'eyedropper' | 'color_sampler' | 'ruler'
   | 'healing' | 'healing_brush' | 'patch' | 'content_aware_move' | 'red_eye'
-  | 'brush' | 'pencil' | 'color_replacement'
+  | 'brush' | 'pencil' | 'color_replacement' | 'mixer_brush'
+  | 'history_brush' | 'art_history_brush'
   | 'clone' | 'pattern_stamp'
-  | 'eraser' | 'background_eraser' | 'magic_eraser'
+  | 'eraser' | 'background_eraser' | 'magic_eraser' | 'rectangle_eraser' | 'lasso_eraser'
   | 'gradient' | 'paint_bucket'
   | 'blur' | 'sharpen' | 'smudge'
   | 'dodge' | 'burn' | 'sponge'
   | 'text' | 'vertical_text'
   | 'pen' | 'free_pen' | 'curvature_pen' | 'add_anchor' | 'delete_anchor' | 'convert_point'
   | 'path_select' | 'direct_select'
-  | 'shape' | 'ellipse_shape' | 'line_shape' | 'parametric_shape' | 'custom_shape'
+  | 'shape' | 'ellipse_shape' | 'line_shape' | 'triangle_shape' | 'polygon_shape' | 'parametric_shape' | 'custom_shape'
   | 'hand' | 'rotate_view'
   | 'zoom_tool'
   | 'select'; // select is used for general purpose selection if needed
@@ -45,11 +46,15 @@ export interface Layer {
   color?: string;
   strokeColor?: string;
   strokeWidth?: number;
-  shapeData?: { 
+  isVertical?: boolean;
+  shapeData?: {
     type: 'rect' | 'path' | 'ellipse';
-    w?: number; h?: number; 
+    w?: number; h?: number;
     points?: { x: number; y: number }[];
-    fill: string; stroke: string; strokeWidth: number 
+    fill: string; stroke: string; strokeWidth: number;
+    smooth?: boolean;
+    closed?: boolean;
+    cornerRadius?: number;
   };
   thumbnail?: string;
 }
@@ -67,6 +72,20 @@ interface HistoryEntry {
     selectionContiguous: boolean;
     slices: { id: string; rect: { x: number; y: number; w: number; h: number } }[];
     colorSamplers: { id: string; x: number; y: number; color: string }[];
+    toolStrength: number;
+    toolHardness: number;
+    canvasRotation: number;
+    gradientType: 'linear' | 'radial' | 'angle' | 'reflected' | 'diamond';
+    selectionMode: 'new' | 'add' | 'subtract' | 'intersect';
+    selectionFeather: number;
+    selectionAntiAlias: boolean;
+    healingSourceMode: 'sampled' | 'pattern';
+    patchMode: 'source' | 'destination';
+    contentAwareMoveMode: 'move' | 'extend';
+    moveAutoSelect: boolean;
+    moveShowTransform: boolean;
+    textFontFamily: string;
+    textAlign: 'left' | 'center' | 'right';
   };
 }
 
@@ -83,7 +102,9 @@ interface EditorState {
   primaryOpacity: number;
   secondaryOpacity: number;
   canvasOffset: { x: number; y: number };
-  lassoPaths: { x: number; y: number }[][] ;
+  canvasRotation: number;
+  setCanvasRotation: (rotation: number) => void;
+  lassoPaths: { x: number; y: number }[][];
   selectionRect: { x: number; y: number; w: number; h: number } | null;
   selectionShape: 'rect' | 'ellipse' | 'lasso';
   isInverseSelection: boolean;
@@ -93,22 +114,72 @@ interface EditorState {
   documentSize: { w: number; h: number };
   history: HistoryEntry[];
   historyIndex: number;
-  
-  vectorPaths: { points: { x: number; y: number }[]; closed: boolean }[];
+  cloneSource: { x: number; y: number } | null;
+  setCloneSource: (source: { x: number; y: number } | null) => void;
+  customPattern: string | null;
+  setCustomPattern: (pattern: string | null) => void;
+  toolStrength: number;
+  setToolStrength: (strength: number) => void;
+  toolHardness: number;
+  setToolHardness: (hardness: number) => void;
+  toningRange: 'shadows' | 'midtones' | 'highlights';
+  setToningRange: (range: 'shadows' | 'midtones' | 'highlights') => void;
+  spongeMode: 'desaturate' | 'saturate';
+  setSpongeMode: (mode: 'desaturate' | 'saturate') => void;
+  redEyePupilSize: number;
+  setRedEyePupilSize: (val: number) => void;
+  redEyeDarkenAmount: number;
+  setRedEyeDarkenAmount: (val: number) => void;
+  isTyping: boolean;
+  setIsTyping: (val: boolean) => void;
+
+  vectorPaths: { points: { x: number; y: number }[]; closed: boolean; smooth?: boolean }[];
   activePathIndex: number | null;
   penMode: 'path' | 'shape';
+  cornerRadius: number;
+  setCornerRadius: (radius: number) => void;
   selectionMode: 'new' | 'add' | 'subtract' | 'intersect';
   slices: { id: string; rect: { x: number; y: number; w: number; h: number } }[];
   colorSamplers: { id: string; x: number; y: number; color: string }[];
   rulerData: { start: { x: number; y: number }; end: { x: number; y: number } } | null;
-  
+  polygonSides: number;
+  setPolygonSides: (sides: number) => void;
+  starPoints: number;
+  setStarPoints: (points: number) => void;
+  starInnerRadius: number;
+  setStarInnerRadius: (radius: number) => void;
+
+  // Advanced Tool Settings
+  selectionFeather: number;
+  setSelectionFeather: (val: number) => void;
+  selectionAntiAlias: boolean;
+  setSelectionAntiAlias: (val: boolean) => void;
+  gradientType: 'linear' | 'radial' | 'angle' | 'reflected' | 'diamond';
+  setGradientType: (type: 'linear' | 'radial' | 'angle' | 'reflected' | 'diamond') => void;
+  healingSourceMode: 'sampled' | 'pattern';
+  setHealingSourceMode: (mode: 'sampled' | 'pattern') => void;
+  patchMode: 'source' | 'destination';
+  setPatchMode: (mode: 'source' | 'destination') => void;
+  contentAwareMoveMode: 'move' | 'extend';
+  setContentAwareMoveMode: (mode: 'move' | 'extend') => void;
+  moveAutoSelect: boolean;
+  setMoveAutoSelect: (val: boolean) => void;
+  moveShowTransform: boolean;
+  setMoveShowTransform: (val: boolean) => void;
+  textFontFamily: string;
+  setTextFontFamily: (val: string) => void;
+  textAlign: 'left' | 'center' | 'right';
+  setTextAlign: (val: 'left' | 'center' | 'right') => void;
+  textEditor: { x: number; y: number; value: string } | null;
+  setTextEditor: (editor: { x: number; y: number; value: string } | null | ((prev: { x: number; y: number; value: string } | null) => { x: number; y: number; value: string } | null)) => void;
+
   // Actions
   setActiveTool: (tool: Tool) => void;
   setToolVariant: (groupId: string, tool: Tool) => void;
   setZoom: (zoom: number) => void;
   setCanvasOffset: (offset: { x: number; y: number }) => void;
   setLassoPaths: (paths: { x: number; y: number }[][] | ((prev: { x: number; y: number }[][]) => { x: number; y: number }[][])) => void;
-  setVectorPaths: (paths: { points: { x: number; y: number }[]; closed: boolean }[] | ((prev: { points: { x: number; y: number }[]; closed: boolean }[]) => { points: { x: number; y: number }[]; closed: boolean }[])) => void;
+  setVectorPaths: (paths: { points: { x: number; y: number }[]; closed: boolean; smooth?: boolean }[] | ((prev: { points: { x: number; y: number }[]; closed: boolean; smooth?: boolean }[]) => { points: { x: number; y: number }[]; closed: boolean; smooth?: boolean }[])) => void;
   setActivePathIndex: (index: number | null) => void;
   setPenMode: (mode: 'path' | 'shape') => void;
   setSelectionRect: (rect: { x: number; y: number; w: number; h: number } | null | ((prev: { x: number; y: number; w: number; h: number } | null) => { x: number; y: number; w: number; h: number } | null), shape?: 'rect' | 'ellipse') => void;
@@ -151,6 +222,10 @@ const initialLayers: Layer[] = [];
 
 export const useStore = create<EditorState>((set) => ({
   activeTool: 'move',
+  cloneSource: null,
+  customPattern: null,
+  toolStrength: 50,
+  toolHardness: 50,
   activeToolVariants: {
     move: 'move',
     marquee: 'marquee',
@@ -160,6 +235,7 @@ export const useStore = create<EditorState>((set) => ({
     eyedropper: 'eyedropper',
     healing: 'healing',
     brush: 'brush',
+    history: 'history_brush',
     clone: 'clone',
     eraser: 'eraser',
     gradient: 'gradient',
@@ -182,6 +258,8 @@ export const useStore = create<EditorState>((set) => ({
   primaryOpacity: 1,
   secondaryOpacity: 1,
   canvasOffset: { x: 0, y: 0 },
+  canvasRotation: 0,
+  setCanvasRotation: (rotation) => set({ canvasRotation: rotation }),
   lassoPaths: [],
   selectionRect: null,
   selectionShape: 'rect',
@@ -195,7 +273,55 @@ export const useStore = create<EditorState>((set) => ({
   slices: [],
   colorSamplers: [],
   rulerData: null,
+  polygonSides: 5,
+  starPoints: 5,
+  starInnerRadius: 40,
+  cornerRadius: 0,
   penMode: 'path',
+  toningRange: 'midtones',
+  spongeMode: 'desaturate',
+  redEyePupilSize: 50,
+  redEyeDarkenAmount: 50,
+  textEditor: null,
+  isTyping: false,
+  
+  // Advanced Tool Settings Initial Values
+  selectionFeather: 0,
+  selectionAntiAlias: true,
+  gradientType: 'linear',
+  healingSourceMode: 'sampled',
+  patchMode: 'source',
+  contentAwareMoveMode: 'move',
+  moveAutoSelect: true,
+  moveShowTransform: false,
+  textFontFamily: 'Inter, system-ui, sans-serif',
+  textAlign: 'left',
+  
+  // Advanced Tool Setters
+  setSelectionFeather: (val) => set({ selectionFeather: val }),
+  setSelectionAntiAlias: (val) => set({ selectionAntiAlias: val }),
+  setGradientType: (type) => set({ gradientType: type }),
+  setHealingSourceMode: (mode) => set({ healingSourceMode: mode }),
+  setPatchMode: (mode) => set({ patchMode: mode }),
+  setContentAwareMoveMode: (mode) => set({ contentAwareMoveMode: mode }),
+  setMoveAutoSelect: (val) => set({ moveAutoSelect: val }),
+  setMoveShowTransform: (val) => set({ moveShowTransform: val }),
+  setTextFontFamily: (val) => set({ textFontFamily: val }),
+  setTextAlign: (val) => set({ textAlign: val }),
+  setPolygonSides: (sides) => set({ polygonSides: sides }),
+  setStarPoints: (points) => set({ starPoints: points }),
+  setStarInnerRadius: (radius) => set({ starInnerRadius: radius }),
+  setCornerRadius: (radius) => set({ cornerRadius: radius }),
+  setIsTyping: (val) => set({ isTyping: val }),
+  setToolStrength: (strength) => set({ toolStrength: strength }),
+  setToolHardness: (hardness) => set({ toolHardness: hardness }),
+  setToningRange: (range) => set({ toningRange: range }),
+  setSpongeMode: (mode) => set({ spongeMode: mode }),
+  setRedEyePupilSize: (val) => set({ redEyePupilSize: val }),
+  setRedEyeDarkenAmount: (val) => set({ redEyeDarkenAmount: val }),
+  setTextEditor: (updater) => set((state) => ({
+    textEditor: typeof updater === 'function' ? updater(state.textEditor) : updater
+  })),
   
   // Initialize history with the starting state
   documentSize: { w: 2000, h: 1400 },
@@ -213,6 +339,20 @@ export const useStore = create<EditorState>((set) => ({
         selectionContiguous: true,
         slices: [],
         colorSamplers: [],
+        toolStrength: 50,
+        toolHardness: 50,
+        canvasRotation: 0,
+        gradientType: 'linear',
+        selectionMode: 'new',
+        selectionFeather: 0,
+        selectionAntiAlias: true,
+        healingSourceMode: 'sampled',
+        patchMode: 'source',
+        contentAwareMoveMode: 'move',
+        moveAutoSelect: true,
+        moveShowTransform: false,
+        textFontFamily: 'Inter, system-ui, sans-serif',
+        textAlign: 'left',
       },
     },
   ],
@@ -346,6 +486,9 @@ export const useStore = create<EditorState>((set) => ({
     return { layers: next };
   }),
   
+  setCloneSource: (cloneSource) => set({ cloneSource }),
+  setCustomPattern: (customPattern) => set({ customPattern }),
+
   recordHistory: (name) => set((state) => {
     const newEntry = {
       name,
@@ -360,9 +503,22 @@ export const useStore = create<EditorState>((set) => ({
         selectionContiguous: state.selectionContiguous,
         slices: JSON.parse(JSON.stringify(state.slices)),
         colorSamplers: JSON.parse(JSON.stringify(state.colorSamplers)),
+        toolStrength: state.toolStrength,
+        toolHardness: state.toolHardness,
+        canvasRotation: state.canvasRotation,
+        gradientType: state.gradientType,
+        selectionMode: state.selectionMode,
+        selectionFeather: state.selectionFeather,
+        selectionAntiAlias: state.selectionAntiAlias,
+        healingSourceMode: state.healingSourceMode,
+        patchMode: state.patchMode,
+        contentAwareMoveMode: state.contentAwareMoveMode,
+        moveAutoSelect: state.moveAutoSelect,
+        moveShowTransform: state.moveShowTransform,
+        textFontFamily: state.textFontFamily,
+        textAlign: state.textAlign,
       },
     };
-    // Cut off any future history if we were in the middle of undo/redo
     const newHistory = state.history.slice(0, state.historyIndex + 1);
     return {
       history: [...newHistory, newEntry],

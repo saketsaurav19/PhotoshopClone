@@ -20,19 +20,29 @@ export const lassoTools: ToolModule[] = [
   },
   {
     id: 'polygonal_lasso',
-    start: ({ coords, setLassoPaths, setIsInteracting, selectionMode, isShift, isAlt, zoom }) => {
+    start: ({ coords, setLassoPaths, setIsInteracting, selectionMode, isShift, isAlt, zoom, recordHistory, isInteracting }) => {
+      let closed = false;
       setLassoPaths((prev: any) => {
-        if (prev.length === 0 || shouldClear(selectionMode, isShift, isAlt)) {
+        // Only start a brand new path if we aren't already building one
+        if (!isInteracting || prev.length === 0 || (shouldClear(selectionMode, isShift, isAlt) && prev[prev.length-1].length === 0)) {
           setIsInteracting(true);
           return [[coords]];
         }
         
         const currentPath = prev[prev.length - 1];
+        if (currentPath.length === 0) {
+          const next = [...prev];
+          next[next.length - 1] = [coords];
+          return next;
+        }
+        
         const firstPoint = currentPath[0];
         const dist = Math.hypot(coords.x - firstPoint.x, coords.y - firstPoint.y);
         
+        // Close path if clicking near start
         if (dist < 15 / (zoom || 1) && currentPath.length > 2) {
           setIsInteracting(false);
+          closed = true;
           return prev;
         }
         
@@ -40,6 +50,13 @@ export const lassoTools: ToolModule[] = [
         next[next.length - 1] = [...next[next.length - 1], coords];
         return next;
       });
+
+      // Record history after the point is added (or path closed)
+      if (closed) {
+        recordHistory('Polygonal Lasso (Closed)');
+      } else {
+        recordHistory('Polygonal Lasso Point');
+      }
     },
     doubleClick: ({ setIsInteracting, recordHistory }) => {
       setIsInteracting(false);
