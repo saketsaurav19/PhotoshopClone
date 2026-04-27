@@ -29,7 +29,7 @@ export default defineConfig({
       }
     })
   ],
-  base: '/Pixelite/',
+  base: '/',
   server: {
     cors: true,
   },
