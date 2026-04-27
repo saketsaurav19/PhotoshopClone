@@ -65,6 +65,8 @@ interface HistoryEntry {
     documentSize: { w: number; h: number };
     selectionTolerance: number;
     selectionContiguous: boolean;
+    slices: { id: string; rect: { x: number; y: number; w: number; h: number } }[];
+    colorSamplers: { id: string; x: number; y: number; color: string }[];
   };
 }
 
@@ -97,6 +99,8 @@ interface EditorState {
   penMode: 'path' | 'shape';
   selectionMode: 'new' | 'add' | 'subtract' | 'intersect';
   slices: { id: string; rect: { x: number; y: number; w: number; h: number } }[];
+  colorSamplers: { id: string; x: number; y: number; color: string }[];
+  rulerData: { start: { x: number; y: number }; end: { x: number; y: number } } | null;
   
   // Actions
   setActiveTool: (tool: Tool) => void;
@@ -135,6 +139,11 @@ interface EditorState {
   recordHistory: (actionName: string) => void;
   setSlices: (slices: { id: string; rect: { x: number; y: number; w: number; h: number } }[]) => void;
   addSlice: (rect: { x: number; y: number; w: number; h: number }) => void;
+  clearSlices: () => void;
+  addColorSampler: (coords: { x: number; y: number }, color: string) => void;
+  removeColorSampler: (id: string) => void;
+  clearColorSamplers: () => void;
+  setRulerData: (data: { start: { x: number; y: number }; end: { x: number; y: number } } | null) => void;
 }
 
 // Initial state for the layers - now empty by default
@@ -184,6 +193,8 @@ export const useStore = create<EditorState>((set) => ({
   vectorPaths: [],
   activePathIndex: null,
   slices: [],
+  colorSamplers: [],
+  rulerData: null,
   penMode: 'path',
   
   // Initialize history with the starting state
@@ -201,6 +212,7 @@ export const useStore = create<EditorState>((set) => ({
         selectionTolerance: 32,
         selectionContiguous: true,
         slices: [],
+        colorSamplers: [],
       },
     },
   ],
@@ -346,6 +358,8 @@ export const useStore = create<EditorState>((set) => ({
         documentSize: { ...state.documentSize },
         selectionTolerance: state.selectionTolerance,
         selectionContiguous: state.selectionContiguous,
+        slices: JSON.parse(JSON.stringify(state.slices)),
+        colorSamplers: JSON.parse(JSON.stringify(state.colorSamplers)),
       },
     };
     // Cut off any future history if we were in the middle of undo/redo
@@ -363,4 +377,13 @@ export const useStore = create<EditorState>((set) => ({
   addSlice: (rect) => set((state) => ({ 
     slices: [...state.slices, { id: (state.slices.length + 1).toString(), rect }] 
   })),
+  clearSlices: () => set({ slices: [] }),
+  addColorSampler: (coords, color) => set((state) => ({
+    colorSamplers: [...state.colorSamplers, { id: (state.colorSamplers.length + 1).toString(), ...coords, color }]
+  })),
+  removeColorSampler: (id) => set((state) => ({
+    colorSamplers: state.colorSamplers.filter(s => s.id !== id)
+  })),
+  clearColorSamplers: () => set({ colorSamplers: [] }),
+  setRulerData: (rulerData) => set({ rulerData }),
 }));

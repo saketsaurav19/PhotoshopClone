@@ -146,6 +146,88 @@ const OptionsBar: React.FC = () => {
         </>
       )}
 
+      {activeTool === 'color_sampler' && (
+        <>
+          <div className="option-control">
+            <button 
+              className="premium-btn-sm" 
+              onClick={() => { useStore.getState().clearColorSamplers(); recordHistory('Clear Samplers'); }}
+              style={{ padding: '4px 12px', fontSize: '11px', background: '#e74c3c', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+            >
+              Clear Samplers
+            </button>
+            <div style={{ marginLeft: '12px', display: 'flex', gap: '8px' }}>
+              {useStore.getState().colorSamplers.map(s => (
+                <div key={s.id} style={{ display: 'flex', alignItems: 'center', gap: '4px', background: '#1a1a1a', padding: '2px 6px', borderRadius: '3px', fontSize: '10px' }}>
+                  <span style={{ color: '#888' }}>{s.id}:</span>
+                  <div style={{ width: '8px', height: '8px', background: s.color, border: '1px solid #444' }} />
+                  <span>{s.color.toUpperCase()}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+          <div className="options-divider" />
+        </>
+      )}
+
+      {activeTool === 'ruler' && (
+        <>
+          <div className="option-control">
+            {useStore.getState().rulerData ? (
+              (() => {
+                const { start, end } = useStore.getState().rulerData!;
+                const dx = end.x - start.x;
+                const dy = end.y - start.y;
+                const dist = Math.sqrt(dx*dx + dy*dy).toFixed(1);
+                const angle = (Math.atan2(dy, dx) * 180 / Math.PI).toFixed(1);
+                return (
+                  <div style={{ display: 'flex', gap: '12px', fontSize: '11px', color: '#ccc' }}>
+                    <span>L1: {dist}px</span>
+                    <span>A: {angle}°</span>
+                    <span>ΔX: {dx.toFixed(1)}</span>
+                    <span>ΔY: {dy.toFixed(1)}</span>
+                  </div>
+                );
+              })()
+            ) : (
+              <span style={{ fontSize: '11px', color: '#666' }}>Drag to measure</span>
+            )}
+          </div>
+          <div className="options-divider" />
+        </>
+      )}
+
+      {(activeTool === 'slice' || activeTool === 'slice_select') && (
+        <>
+          <div className="option-control">
+            <button 
+              className="premium-btn-sm" 
+              onClick={() => { useStore.getState().clearSlices(); recordHistory('Clear Slices'); }}
+              style={{ padding: '4px 12px', fontSize: '11px', background: '#e74c3c', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+            >
+              Clear Slices
+            </button>
+            {activeTool === 'slice_select' && (window as any)._sliceLastClickedIdx !== undefined && (
+              <button 
+                className="premium-btn-sm" 
+                onClick={() => {
+                  const idx = (window as any)._sliceLastClickedIdx;
+                  const slices = [...useStore.getState().slices];
+                  slices.splice(idx, 1);
+                  useStore.getState().setSlices(slices);
+                  delete (window as any)._sliceLastClickedIdx;
+                  recordHistory('Delete Slice');
+                }}
+                style={{ padding: '4px 12px', fontSize: '11px', background: '#444', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer', marginLeft: '8px' }}
+              >
+                Delete Slice
+              </button>
+            )}
+          </div>
+          <div className="options-divider" />
+        </>
+      )}
+
       {activeTool === 'crop' && (
         <>
           <div className="option-control">

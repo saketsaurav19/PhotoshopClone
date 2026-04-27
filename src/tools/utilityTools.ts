@@ -59,5 +59,37 @@ export const utilityTools: ToolModule[] = [
       updateLayer(activeLayerId!, { dataUrl: canvas.toDataURL() });
       recordHistory('Paint Bucket');
     }
+  },
+  {
+    id: 'color_sampler',
+    start: ({ coords, ctx, layers, activeLayerId, addColorSampler, recordHistory }) => {
+      if (!ctx) return;
+      const layer = layers.find(l => l.id === activeLayerId);
+      const lx = Math.round(coords.x - (layer?.position.x || 0));
+      const ly = Math.round(coords.y - (layer?.position.y || 0));
+      try {
+        const data = ctx.getImageData(lx, ly, 1, 1).data;
+        const hex = `#${((1 << 24) + (data[0] << 16) + (data[1] << 8) + data[2]).toString(16).slice(1)}`;
+        addColorSampler(coords, hex);
+        recordHistory('Add Color Sampler');
+      } catch (e) {
+        console.warn('Sampler out of bounds');
+      }
+    }
+  },
+  {
+    id: 'ruler',
+    start: ({ coords, setRulerData, setIsInteracting }) => {
+      setRulerData({ start: coords, end: coords });
+      setIsInteracting(true);
+    },
+    move: ({ coords, rulerData, setRulerData }) => {
+      if (rulerData) {
+        setRulerData({ ...rulerData, end: coords });
+      }
+    },
+    end: ({ setIsInteracting }) => {
+      setIsInteracting(false);
+    }
   }
 ];

@@ -20,6 +20,8 @@ export interface ToolContext {
   lassoPaths: { x: number; y: number }[][];
   isInverseSelection: boolean;
   slices: { id: string; rect: { x: number; y: number; w: number; h: number } }[];
+  colorSamplers: { id: string; x: number; y: number; color: string }[];
+  rulerData: { start: { x: number; y: number }; end: { x: number; y: number } } | null;
   
   // State Updaters
   setLassoPaths: (paths: any) => void;
@@ -33,6 +35,9 @@ export interface ToolContext {
   setDocumentSize: (size: { w: number, h: number }) => void;
   setSlices: (slices: any[]) => void;
   addSlice: (rect: { x: number, y: number, w: number, h: number }) => void;
+  addColorSampler: (coords: { x: number; y: number }, color: string) => void;
+  clearColorSamplers: () => void;
+  setRulerData: (data: any) => void;
 }
 
 export interface ToolModule {

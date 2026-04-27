@@ -60,6 +60,7 @@ const TOOL_GROUPS: ToolGroup[] = [
       { id: 'crop', icon: LucideIcons.Crop, label: 'Crop Tool', shortcut: 'C' },
       { id: 'perspective_crop', icon: LucideIcons.Maximize, label: 'Perspective Crop', shortcut: 'C' },
       { id: 'slice', icon: LucideIcons.Scissors, label: 'Slice Tool', shortcut: 'C' },
+      { id: 'slice_select', icon: LucideIcons.Pointer, label: 'Slice Select Tool', shortcut: 'C' },
     ],
   },
   {

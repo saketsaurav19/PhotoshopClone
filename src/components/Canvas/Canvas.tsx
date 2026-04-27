@@ -15,7 +15,8 @@ const Canvas: React.FC = () => {
     isInverseSelection, setIsInverseSelection,
     documentSize, setDocumentSize,
     vectorPaths, setVectorPaths, activePathIndex, setActivePathIndex, penMode,
-    slices, setSlices, addSlice
+    slices, setSlices, addSlice,
+    colorSamplers, addColorSampler, clearColorSamplers, rulerData, setRulerData
   } = store;
 
   // 1. Unified State for maximum stability
@@ -543,7 +544,8 @@ ctx.putImageData(imgData, 0, 0);
       selectionRect, lassoPaths, isInverseSelection,
       setLassoPaths, setSelectionRect, setCropRect, updateLayer, recordHistory, setIsInteracting,
       setBrushColor, addLayer, setDocumentSize,
-      slices, setSlices, addSlice
+      slices, setSlices, addSlice,
+      colorSamplers, addColorSampler, clearColorSamplers, rulerData, setRulerData
     };
 
     const toolModule = getToolModule(activeTool);
@@ -651,7 +653,8 @@ ctx.putImageData(imgData, 0, 0);
       selectionRect, lassoPaths, isInverseSelection,
       setLassoPaths, setSelectionRect, setCropRect, updateLayer, recordHistory, setIsInteracting,
       setBrushColor, addLayer, setDocumentSize,
-      slices, setSlices, addSlice
+      slices, setSlices, addSlice,
+      colorSamplers, addColorSampler, clearColorSamplers, rulerData, setRulerData
     };
 
     const toolModule = getToolModule(activeTool);
@@ -735,7 +738,8 @@ ctx.putImageData(imgData, 0, 0);
       selectionRect, lassoPaths, isInverseSelection,
       setLassoPaths, setSelectionRect, setCropRect, updateLayer, recordHistory, setIsInteracting,
       setBrushColor, addLayer, setDocumentSize,
-      slices, setSlices, addSlice
+      slices, setSlices, addSlice,
+      colorSamplers, addColorSampler, clearColorSamplers, rulerData, setRulerData
     };
 
     const toolModule = getToolModule(activeTool);
@@ -869,10 +873,11 @@ ctx.putImageData(imgData, 0, 0);
       selectionMode: useStore.getState().selectionMode,
       selectionTolerance: useStore.getState().selectionTolerance,
       selectionContiguous: useStore.getState().selectionContiguous,
-      selectionRect,
+      selectionRect, lassoPaths, isInverseSelection,
       setLassoPaths, setSelectionRect, setCropRect, updateLayer, recordHistory, setIsInteracting,
       setBrushColor, addLayer, setDocumentSize,
-      slices, setSlices, addSlice
+      slices, setSlices, addSlice,
+      colorSamplers, addColorSampler, clearColorSamplers, rulerData, setRulerData
     };
 
     const toolModule = getToolModule(activeTool);
@@ -880,7 +885,7 @@ ctx.putImageData(imgData, 0, 0);
       toolModule.end(context);
     }
 
-    if (['brush', 'pencil', 'eraser', 'blur', 'sharpen', 'dodge', 'burn', 'healing', 'smudge', 'clone'].includes(activeTool)) {
+    if (['brush', 'pencil', 'eraser', 'blur', 'sharpen', 'dodge', 'burn', 'healing', 'healing_brush', 'patch', 'smudge', 'clone'].includes(activeTool)) {
       const id = activeLayerId || layers[0]?.id;
       const canvas = canvasRefs.current[id];
       if (canvas) {
@@ -931,7 +936,7 @@ ctx.putImageData(imgData, 0, 0);
 
     setIsInteracting(false);
     lastPointRef.current = null;
-  }, [isInteracting, activeTool, activeLayerId, layers, updateLayer, draftShape, addLayer, hexToRgba, brushColor, primaryOpacity, secondaryColor, secondaryOpacity, strokeWidth, recordHistory, currentMousePos, gradientStart, applyGradient, selectionRect]);
+  }, [isInteracting, activeTool, activeLayerId, layers, updateLayer, draftShape, addLayer, hexToRgba, brushColor, primaryOpacity, secondaryColor, secondaryOpacity, strokeWidth, recordHistory, currentMousePos, gradientStart, applyGradient, selectionRect, lassoPaths]);
 
   useEffect(() => {
     const handleWheel = (e: WheelEvent) => {
@@ -1305,6 +1310,20 @@ ctx.putImageData(imgData, 0, 0);
                   </g>
                 </g>
 
+                {/* Patch Preview SVG */}
+                {activeTool === 'patch' && (window as any)._patchOffset && (
+                  <g style={{ transform: `translate(${(window as any)._patchOffset.x / 2}px, ${(window as any)._patchOffset.y / 2}px)` }}>
+                    <path
+                      d={getSelectionPathData()}
+                      fill="none"
+                      stroke="#fff"
+                      strokeWidth="1"
+                      strokeDasharray="4 2"
+                      opacity="0.8"
+                    />
+                  </g>
+                )}
+
                 {/* Anchor Points (Handles) - Matching Photopea style */}
                 {!isInverseSelection && lassoPaths.map((path, pIdx) => (
                   <g key={`path-anchors-${pIdx}`}>
@@ -1470,8 +1489,22 @@ ctx.putImageData(imgData, 0, 0);
           </>
         )}
 
-        {currentMousePos && ['brush', 'pencil', 'eraser', 'blur', 'sharpen', 'dodge', 'burn', 'healing', 'smudge', 'clone'].includes(activeTool) && (
+        {currentMousePos && ['brush', 'pencil', 'eraser', 'blur', 'sharpen', 'dodge', 'burn', 'healing', 'healing_brush', 'smudge', 'clone'].includes(activeTool) && (
           <div className="brush-cursor" style={{ left: currentMousePos.x / 2, top: currentMousePos.y / 2, width: brushSize / 2, height: brushSize / 2 }} />
+        )}
+
+        {cloneSource && activeTool === 'clone' && (
+          <div className="source-cursor" style={{ position: 'absolute', left: cloneSource.x / 2, top: cloneSource.y / 2, width: '20px', height: '20px', border: '1px solid white', borderRadius: '50%', transform: 'translate(-50%, -50%)', pointerEvents: 'none', zIndex: 1000 }}>
+            <div style={{ position: 'absolute', top: '50%', left: 0, width: '100%', height: '1px', background: 'white' }} />
+            <div style={{ position: 'absolute', left: '50%', top: 0, width: '1px', height: '100%', background: 'white' }} />
+          </div>
+        )}
+
+        {(window as any)._healingSource && activeTool === 'healing_brush' && (
+          <div className="source-cursor" style={{ position: 'absolute', left: (window as any)._healingSource.x / 2, top: (window as any)._healingSource.y / 2, width: '20px', height: '20px', border: '1px solid #00ff00', borderRadius: '50%', transform: 'translate(-50%, -50%)', pointerEvents: 'none', zIndex: 1000 }}>
+            <div style={{ position: 'absolute', top: '50%', left: 0, width: '100%', height: '1px', background: '#00ff00' }} />
+            <div style={{ position: 'absolute', left: '50%', top: 0, width: '1px', height: '100%', background: '#00ff00' }} />
+          </div>
         )}
 
         {/* Selection rendering is now handled globally via SVG mask inside the layer loop or at doc level */}
@@ -1632,6 +1665,42 @@ ctx.putImageData(imgData, 0, 0);
               );
             })}
           </div>
+        )}
+
+        {colorSamplers && colorSamplers.length > 0 && (
+          <div className="samplers-overlay" style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none', zIndex: 1600 }}>
+            {colorSamplers.map((s) => (
+              <div
+                key={s.id}
+                style={{
+                  position: 'absolute',
+                  left: s.x / 2,
+                  top: s.y / 2,
+                  width: '1px', height: '1px',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center'
+                }}
+              >
+                <div style={{ position: 'absolute', width: '12px', height: '12px', border: '1px solid white', borderRadius: '50%', boxShadow: '0 0 0 1px black' }} />
+                <div style={{ position: 'absolute', width: '8px', height: '1px', background: 'white', transform: 'rotate(0deg)' }} />
+                <div style={{ position: 'absolute', width: '1px', height: '8px', background: 'white' }} />
+                <span style={{ position: 'absolute', left: '8px', top: '8px', background: 'rgba(0,0,0,0.7)', color: 'white', fontSize: '10px', padding: '1px 3px', borderRadius: '2px' }}>
+                  {s.id}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {rulerData && (
+          <svg style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none', zIndex: 1700 }}>
+            <line
+              x1={rulerData.start.x / 2} y1={rulerData.start.y / 2}
+              x2={rulerData.end.x / 2} y2={rulerData.end.y / 2}
+              stroke="white" strokeWidth="1" strokeDasharray="4 2"
+            />
+            <circle cx={rulerData.start.x / 2} cy={rulerData.start.y / 2} r="3" fill="white" stroke="black" />
+            <circle cx={rulerData.end.x / 2} cy={rulerData.end.y / 2} r="3" fill="white" stroke="black" />
+          </svg>
         )}
       </div>
     </div>
