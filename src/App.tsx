@@ -402,7 +402,7 @@ const App: React.FC = () => {
       setIsProcessing(true);
       setProcessingText('AI is removing background...');
 
-      const blob = await removeBackground(layer.dataUrl);
+      const blob = await removeBackground(layer.dataUrl, { device: 'gpu' });
 
       const reader = new FileReader();
       reader.onload = () => {
